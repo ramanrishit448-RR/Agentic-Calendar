@@ -181,7 +181,7 @@ export async function streamAgentReply(input: StreamAgentReplyInput) {
     if (model.includes("google") && !model.includes("gemini-3.1-flash-lite")) {
       console.warn("Primary Gemini model encountered error, switching to gemini-3.1-flash-lite:", errMessage);
       model = "google/gemini-3.1-flash-lite";
-      agent = new Agent({
+      const fallbackAgent = new Agent({
         id: "meeting-assistant-fallback",
         name: "Meeting Assistant",
         instructions: getAgentInstructions(),
@@ -189,7 +189,7 @@ export async function streamAgentReply(input: StreamAgentReplyInput) {
         tools: createCalendarTools(input.authUserId),
         memory,
       });
-      streamResult = await agent.stream(input.message, {
+      streamResult = await fallbackAgent.stream(input.message, {
         memory: {
           resource: input.authUserId,
           thread: input.threadId,

@@ -12,14 +12,14 @@ connectionRouter.use(requireSession);
 
 connectionRouter.get("/", async (req, res) => {
   try {
-    let connection = await getCalendarConnection(req.auth!.userId);
+    let connection = await getCalendarConnection(req.sessionAuth!.userId);
 
     // If not connected yet or pending, check Descope to see if user just completed OAuth
     if (connection.status !== "connected") {
       try {
         connection = await refreshCalendarConnection({
-          userId: req.auth!.userId,
-          authUserId: req.auth!.authUserId,
+          userId: req.sessionAuth!.userId,
+          authUserId: req.sessionAuth!.authUserId,
         });
       } catch (err) {
         console.warn("Auto-sync connection status error:", err);
@@ -49,7 +49,7 @@ connectionRouter.post("/connect", async (req, res) => {
         : `${process.env.APP_URL ?? "http://localhost:3000"}/dashboard`;
 
     const result = await createCalendarConnectUrl({
-      userId: req.auth!.userId,
+      userId: req.sessionAuth!.userId,
       refreshToken,
       redirectUrl,
     });
@@ -66,8 +66,8 @@ connectionRouter.post("/connect", async (req, res) => {
 connectionRouter.post("/refresh-status", async (req, res) => {
   try {
     const connection = await refreshCalendarConnection({
-      userId: req.auth!.userId,
-      authUserId: req.auth!.authUserId,
+      userId: req.sessionAuth!.userId,
+      authUserId: req.sessionAuth!.authUserId,
     });
 
     res.json({ connection });

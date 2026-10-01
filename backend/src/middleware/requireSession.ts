@@ -13,7 +13,7 @@ export type AuthContext = {
 declare global {
   namespace Express {
     interface Request {
-      auth?: AuthContext;
+      sessionAuth?: AuthContext;
     }
   }
 }
@@ -47,7 +47,7 @@ export async function requireSession(
     const user = await ensureUser({ authUserId, email });
 
     // add auth info in ur req object
-    req.auth = {
+    req.sessionAuth = {
       authUserId,
       email,
       name: typeof claims.name === "string" ? claims.name : undefined,

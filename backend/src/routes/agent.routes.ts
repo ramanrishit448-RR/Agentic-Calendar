@@ -20,7 +20,7 @@ agentRoutes.use(requireSession);
 
 agentRoutes.get("/threads", async (req, res) => {
   try {
-    const threads = await listUserThreads(req.auth!.authUserId);
+    const threads = await listUserThreads(req.sessionAuth!.authUserId);
     res.json({ threads });
   } catch (error) {
     const message =
@@ -37,7 +37,7 @@ agentRoutes.get("/threads/:threadId", async (req, res) => {
     return;
   }
   try {
-    const messages = await getThreadMessages(req.auth!.authUserId, parsed.data);
+    const messages = await getThreadMessages(req.sessionAuth!.authUserId, parsed.data);
     res.json({ threadId: parsed.data, messages });
   } catch (error) {
     const message =
@@ -65,8 +65,8 @@ agentRoutes.post("/chat", async (req, res) => {
 
   try {
     await streamAgentReply({
-      userId: req.auth!.userId,
-      authUserId: req.auth!.authUserId,
+      userId: req.sessionAuth!.userId,
+      authUserId: req.sessionAuth!.authUserId,
       threadId: parsed.data.threadId,
       message: parsed.data.message,
       onEvent: write,
