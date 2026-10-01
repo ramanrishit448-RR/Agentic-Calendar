@@ -12,10 +12,23 @@ connectionRouter.use(requireSession);
 
 connectionRouter.get("/", async (req, res) => {
   try {
-    const connection = await getCalendarConnection(req.auth!.userId);
+    let connection = await getCalendarConnection(req.auth!.userId);
+
+    // If not connected yet or pending, check Descope to see if user just completed OAuth
+    if (connection.status !== "connected") {
+      try {
+        connection = await refreshCalendarConnection({
+          userId: req.auth!.userId,
+          authUserId: req.auth!.authUserId,
+        });
+      } catch (err) {
+        console.warn("Auto-sync connection status error:", err);
+      }
+    }
 
     res.json({ connection });
-  } catch {
+  } catch (error) {
+    console.error("Failed to load connections:", error);
     res.status(500).json({ error: "could not load connections" });
   }
 });

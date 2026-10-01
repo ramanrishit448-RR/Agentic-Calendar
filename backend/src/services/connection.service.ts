@@ -58,6 +58,11 @@ export async function refreshCalendarConnection(input: {
       input.authUserId,
     );
 
+  console.log("Descope fetchToken response ok:", response.ok, "hasData:", !!response.data);
+  if (!response.ok) {
+    console.warn("Descope fetchToken error:", response);
+  }
+
   const status = response.ok && response.data ? "connected" : "disconnected";
 
   const row = await upsertCalendarConnection({
