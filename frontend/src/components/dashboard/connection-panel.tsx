@@ -43,6 +43,7 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string }) {
   const [connection, setConnection] = useState<ConnectionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleLoadCalendarConnection = useCallback(async () => {
     setLoading(true);
@@ -62,21 +63,27 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string }) {
 
   async function handleCalendarConnect() {
     setBusy(true);
+    setErrorMsg(null);
     try {
       await connectCalendar(sessionToken);
-    } catch {
-      console.log("failed to connect");
+    } catch (err) {
+      console.error("failed to connect:", err);
+      setErrorMsg(err instanceof Error ? err.message : "Failed to connect to Google Calendar");
+    } finally {
+      setBusy(false);
     }
   }
 
   async function handleCalendarRefresh() {
     setBusy(true);
+    setErrorMsg(null);
 
     try {
       await refreshCalendarConnection(sessionToken);
       await handleLoadCalendarConnection();
-    } catch {
-      console.log("failed to refresh");
+    } catch (err) {
+      console.error("failed to refresh:", err);
+      setErrorMsg(err instanceof Error ? err.message : "Failed to refresh");
     } finally {
       setBusy(false);
     }
@@ -133,6 +140,7 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string }) {
           </Button>
         </div>
       )}
+      {errorMsg && <p className={styles.error}>{errorMsg}</p>}
     </div>
   );
 }

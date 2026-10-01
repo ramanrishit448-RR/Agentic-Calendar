@@ -27,6 +27,7 @@ connectionRouter.post("/connect", async (req, res) => {
 
     if (!refreshToken) {
       res.status(400).json({ error: "Refresh token required" });
+      return;
     }
 
     const redirectUrl =
@@ -41,8 +42,11 @@ connectionRouter.post("/connect", async (req, res) => {
     });
 
     res.json(result);
-  } catch {
-    res.status(500).json({ error: "could not start connection" });
+  } catch (error) {
+    console.error("Calendar connect error:", error);
+    const message =
+      error instanceof Error ? error.message : "could not start connection";
+    res.status(500).json({ error: message });
   }
 });
 

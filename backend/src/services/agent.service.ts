@@ -29,8 +29,36 @@ export type ThreadMessage = {
   content: string;
 };
 
-function modelName() {
-  return `openai/${process.env.AI_MODEL ?? "gpt-4o-mini"}`;
+function resolveModel() {
+  const geminiKey =
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+    process.env.GOOGLE_GEMINI_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY;
+
+  if (geminiKey) {
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = geminiKey;
+    process.env.GOOGLE_API_KEY = geminiKey;
+
+    const configuredModel = process.env.AI_MODEL;
+    if (configuredModel) {
+      return configuredModel.startsWith("google/")
+        ? configuredModel
+        : `google/${configuredModel}`;
+    }
+    return "google/gemini-3.8-flash";
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    const configuredModel = process.env.AI_MODEL ?? "gpt-4o-mini";
+    return configuredModel.startsWith("openai/")
+      ? configuredModel
+      : `openai/${configuredModel}`;
+  }
+
+  throw new Error(
+    "Missing LLM API key: please set GOOGLE_GEMINI_API_KEY or OPENAI_API_KEY in backend/.env",
+  );
 }
 
 function messageText(content: unknown): string {
@@ -122,9 +150,7 @@ export async function getThreadMessages(
 }
 
 export async function streamAgentReply(input: StreamAgentReplyInput) {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not set env");
-  }
+  const model = resolveModel();
 
   input.onEvent({
     type: "started",
@@ -137,7 +163,7 @@ export async function streamAgentReply(input: StreamAgentReplyInput) {
     id: "metting-assistant",
     name: "Meeting Assitant",
     instructions: getAgentInstructions(),
-    model: modelName(),
+    model,
     tools: createCalendarTools(input.authUserId),
     memory,
   });
