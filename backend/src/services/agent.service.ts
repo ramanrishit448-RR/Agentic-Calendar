@@ -46,7 +46,7 @@ function resolveModel() {
         ? configuredModel
         : `google/${configuredModel}`;
     }
-    return "google/gemini-3.8-flash";
+    return "google/gemini-3.1-flash-lite";
   }
 
   if (process.env.OPENAI_API_KEY) {
@@ -150,7 +150,7 @@ export async function getThreadMessages(
 }
 
 export async function streamAgentReply(input: StreamAgentReplyInput) {
-  const model = resolveModel();
+  let model = resolveModel();
 
   input.onEvent({
     type: "started",
@@ -159,7 +159,7 @@ export async function streamAgentReply(input: StreamAgentReplyInput) {
 
   const memory = createAgentMemory();
 
-  const agent = new Agent({
+  let agent = new Agent({
     id: "metting-assistant",
     name: "Meeting Assitant",
     instructions: getAgentInstructions(),
@@ -168,12 +168,39 @@ export async function streamAgentReply(input: StreamAgentReplyInput) {
     memory,
   });
 
-  const result = await agent.stream(input.message, {
-    memory: {
-      resource: input.authUserId,
-      thread: input.threadId,
-    },
-  });
+  let streamResult;
+  try {
+    streamResult = await agent.stream(input.message, {
+      memory: {
+        resource: input.authUserId,
+        thread: input.threadId,
+      },
+    });
+  } catch (err: unknown) {
+    const errMessage = err instanceof Error ? err.message : String(err);
+    if (model.includes("google") && !model.includes("gemini-3.1-flash-lite")) {
+      console.warn("Primary Gemini model encountered error, switching to gemini-3.1-flash-lite:", errMessage);
+      model = "google/gemini-3.1-flash-lite";
+      agent = new Agent({
+        id: "meeting-assistant-fallback",
+        name: "Meeting Assistant",
+        instructions: getAgentInstructions(),
+        model,
+        tools: createCalendarTools(input.authUserId),
+        memory,
+      });
+      streamResult = await agent.stream(input.message, {
+        memory: {
+          resource: input.authUserId,
+          thread: input.threadId,
+        },
+      });
+    } else {
+      throw err;
+    }
+  }
+
+  const result = streamResult;
 
   for await (const chunk of result.fullStream) {
     if (chunk.type === "tool-call") {
