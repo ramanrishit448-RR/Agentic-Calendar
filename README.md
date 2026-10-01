@@ -165,7 +165,7 @@ Agentic-Calendar/
 - **Node.js**: `v20.x` or later
 - **Docker Desktop**: For running PostgreSQL database
 - **Descope Account**: [Sign up here](https://www.descope.com/)
-- **OpenAI API Key**: [Get key here](https://platform.openai.com/)
+- **Gemini-2.5-pro API Key**: [Get key here](https://aistudio.google.com/api-keys)
 - **Google Cloud Console**: Enabled Google Calendar API with OAuth credentials configured in Descope
 
 ---
