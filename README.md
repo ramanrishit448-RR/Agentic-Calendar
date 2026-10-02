@@ -24,6 +24,7 @@
 [Tech Stack](#-tech-stack) •
 [Project Structure](#-project-structure) •
 [Getting Started](#-getting-started) •
+[Local Setup Guide](./setup.md) •
 [Environment Variables](#-environment-variables) •
 [Example Prompts](#-example-prompts)
 
@@ -129,6 +130,7 @@ flowchart TD
 Agentic-Calendar/
 ├── 🐳 docker-compose.yml       # PostgreSQL container setup (Port: 5442)
 ├── 📄 README.md                # Project documentation
+├── 📘 setup.md                 # Step-by-step local run guide
 │
 ├── 📂 frontend/                # Next.js 16 Web Application
 │   ├── src/
@@ -160,6 +162,8 @@ Agentic-Calendar/
 ---
 
 ## 🚀 Getting Started
+
+> **Full walkthrough:** For a complete step-by-step guide (prerequisites, Descope/Google setup, Docker, backend, frontend, and troubleshooting), see **[setup.md](./setup.md)**.
 
 ### 1. Prerequisites
 - **Node.js**: `v20.x` or later
