@@ -16,7 +16,7 @@ function resolveModel() {
                 ? configuredModel
                 : `google/${configuredModel}`;
         }
-        return "google/gemini-3.1-flash-lite";
+        return "google/gemini-2.0-flash";
     }
     if (process.env.OPENAI_API_KEY) {
         const configuredModel = process.env.AI_MODEL ?? "gpt-4o-mini";
