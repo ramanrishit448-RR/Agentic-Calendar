@@ -8,5 +8,5 @@ export const descopeClient = DescopeClient({
     projectId: projectId ?? "",
     managementKey: managementKey ?? "",
 });
-export const CALENDAR_CONNECTION_ID = process.env.DESCOPE_CALENDAR_CONNECTION_ID ?? "google-calendar";
+export const CALENDAR_CONNECTION_ID = process.env.DESCOPE_CALENDAR_CONNECTION_ID ?? "google-calendar16";
 export const CALENDAR_CONNECTION_LABEL = "Google Calendar";
