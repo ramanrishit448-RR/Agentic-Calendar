@@ -46,7 +46,7 @@ function resolveModel() {
         ? configuredModel
         : `google/${configuredModel}`;
     }
-    return "google/gemini-2.0-flash";
+    return "google/gemini-3.1-flash-lite";
   }
 
   if (process.env.OPENAI_API_KEY) {
