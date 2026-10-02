@@ -1,0 +1,176 @@
+import { Agent } from "@mastra/core/agent";
+import { createAgentMemory } from "../config/memory.js";
+import { getAgentInstructions } from "../config/agent-instructions.js";
+import { createCalendarTools } from "./agent-tools.service.js";
+function resolveModel() {
+    const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+        process.env.GOOGLE_GEMINI_API_KEY ||
+        process.env.GEMINI_API_KEY ||
+        process.env.GOOGLE_API_KEY;
+    if (geminiKey) {
+        process.env.GOOGLE_GENERATIVE_AI_API_KEY = geminiKey;
+        process.env.GOOGLE_API_KEY = geminiKey;
+        const configuredModel = process.env.AI_MODEL;
+        if (configuredModel) {
+            return configuredModel.startsWith("google/")
+                ? configuredModel
+                : `google/${configuredModel}`;
+        }
+        return "google/gemini-3.1-flash-lite";
+    }
+    if (process.env.OPENAI_API_KEY) {
+        const configuredModel = process.env.AI_MODEL ?? "gpt-4o-mini";
+        return configuredModel.startsWith("openai/")
+            ? configuredModel
+            : `openai/${configuredModel}`;
+    }
+    throw new Error("Missing LLM API key: please set GOOGLE_GEMINI_API_KEY or OPENAI_API_KEY in backend/.env");
+}
+function messageText(content) {
+    if (typeof content === "string")
+        return content.trim();
+    if (!content || typeof content !== "object")
+        return "";
+    const record = content;
+    if (typeof record.content === "string" && record.content.trim()) {
+        return record.content.trim();
+    }
+    if (!Array.isArray(record.parts))
+        return "";
+    return record.parts
+        .filter((part) => part.type === "text" && typeof part.text === "string")
+        .map((part) => part.text.trim())
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+}
+export async function listUserThreads(authUserId) {
+    const memory = createAgentMemory();
+    const result = await memory.listThreads({
+        filter: { resourceId: authUserId },
+        perPage: 30,
+        orderBy: { field: "updatedAt", direction: "DESC" },
+    });
+    return result.threads.map((thread) => ({
+        id: thread.id,
+        title: thread.title?.trim() || "Untitled Chat",
+        updatedAt: thread.updatedAt instanceof Date
+            ? thread.updatedAt.toISOString()
+            : String(thread.updatedAt),
+    }));
+}
+export async function getThreadMessages(authUserId, threadId) {
+    const memory = createAgentMemory();
+    const thread = await memory.getThreadById({
+        threadId,
+        resourceId: authUserId,
+    });
+    if (!thread || thread.resourceId !== authUserId) {
+        throw new Error("Thread not found");
+    }
+    const recalledMemoryData = await memory.recall({
+        threadId,
+        resourceId: authUserId,
+        perPage: false,
+    });
+    const messages = [];
+    for (const message of recalledMemoryData.messages) {
+        const content = messageText(message.content);
+        if (!content) {
+            continue;
+        }
+        const role = message.role === "user" || message.role === "assistant"
+            ? message.role
+            : "system";
+        messages.push({
+            id: message.id,
+            role,
+            content,
+        });
+    }
+    return messages;
+}
+export async function streamAgentReply(input) {
+    let model = resolveModel();
+    input.onEvent({
+        type: "started",
+        message: "Agent is planning",
+    });
+    const memory = createAgentMemory();
+    let agent = new Agent({
+        id: "metting-assistant",
+        name: "Meeting Assitant",
+        instructions: getAgentInstructions(),
+        model,
+        tools: createCalendarTools(input.authUserId),
+        memory,
+    });
+    let streamResult;
+    try {
+        streamResult = await agent.stream(input.message, {
+            memory: {
+                resource: input.authUserId,
+                thread: input.threadId,
+            },
+        });
+    }
+    catch (err) {
+        const errMessage = err instanceof Error ? err.message : String(err);
+        if (model.includes("google") && !model.includes("gemini-3.1-flash-lite")) {
+            console.warn("Primary Gemini model encountered error, switching to gemini-3.1-flash-lite:", errMessage);
+            model = "google/gemini-3.1-flash-lite";
+            const fallbackAgent = new Agent({
+                id: "meeting-assistant-fallback",
+                name: "Meeting Assistant",
+                instructions: getAgentInstructions(),
+                model,
+                tools: createCalendarTools(input.authUserId),
+                memory,
+            });
+            streamResult = await fallbackAgent.stream(input.message, {
+                memory: {
+                    resource: input.authUserId,
+                    thread: input.threadId,
+                },
+            });
+        }
+        else {
+            throw err;
+        }
+    }
+    const result = streamResult;
+    for await (const chunk of result.fullStream) {
+        if (chunk.type === "tool-call") {
+            input.onEvent({
+                type: "progress",
+                message: `Running ${chunk.payload.toolName}`,
+            });
+            continue;
+        }
+        if (chunk.type === "text-delta") {
+            const text = chunk.payload.text;
+            if (text) {
+                input.onEvent({
+                    type: "token",
+                    token: text,
+                });
+            }
+        }
+    }
+    // streaming finsihes
+    const thread = await memory.getThreadById({
+        threadId: input.threadId,
+        resourceId: input.authUserId,
+    });
+    if (thread && !thread.title?.trim()) {
+        await memory.updateThread({
+            id: thread.id,
+            title: input.message.slice(0, 80),
+            metadata: thread.metadata ?? {},
+        });
+    }
+    input.onEvent({
+        type: "completed",
+        message: "done",
+    });
+}

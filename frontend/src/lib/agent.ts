@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL = rawApiUrl.replace(/\/+$/, "");
 
 export type AgentStreamEvent = {
   type: "started" | "progress" | "token" | "completed" | "error";
