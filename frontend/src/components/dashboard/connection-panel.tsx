@@ -39,6 +39,11 @@ function statusLabel(status: ConnectionInfo["status"]) {
   return "Not Connected";
 }
 
+const DISCONNECTED_DEFAULT: ConnectionInfo = {
+  label: "Google Calendar",
+  status: "disconnected",
+};
+
 function ConnectionsPanel({ sessionToken }: { sessionToken: string }) {
   const [connection, setConnection] = useState<ConnectionInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +56,8 @@ function ConnectionsPanel({ sessionToken }: { sessionToken: string }) {
     try {
       setConnection(await fetchCalendarConnection(sessionToken));
     } catch {
-      console.log("failed to load calendar connection");
+      // Show disconnected state as fallback so user can still try to connect
+      setConnection(DISCONNECTED_DEFAULT);
     } finally {
       setLoading(false);
     }
